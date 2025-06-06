@@ -45,7 +45,7 @@ AWS credentials configured via aws configure
 `terraform init`
 
 **Apply the Configuration**
-terraform apply
+`terraform apply`
 When prompted, type yes.
 
 **Outputs**
@@ -81,4 +81,5 @@ Make sure your IP is allowed by AWS Security Group (by default it allows 0.0.0.0
 You can change the shutdown time in user_data.sh under SHUTDOWN_MINUTES.
 
 **Destroy Infrastructure**
-terraform destroy
+`terraform destroy`
+~
