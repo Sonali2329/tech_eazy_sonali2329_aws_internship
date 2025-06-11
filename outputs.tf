@@ -8,5 +8,5 @@ output "instance_url" {
 
 output "private_key_path" {
   value       = local_file.private_key.filename
-  description = "Path to the private SSH key"
+  description = "Path to the private SSH key for EC2 access"
 }
