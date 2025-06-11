@@ -43,8 +43,8 @@ chmod +x /opt/shutdown-upload.sh
 # Register shutdown upload script
 echo "/opt/shutdown-upload.sh" > /etc/rc0.d/K99upload
 
-# Auto shutdown after 10 minutes
-SHUTDOWN_MINUTES=10
+# Auto shutdown after 15 minutes
+SHUTDOWN_MINUTES=15
 echo "shutdown -h now" | at now + $SHUTDOWN_MINUTES minutes
 echo "App running. System will shut down in $SHUTDOWN_MINUTES minutes." >> /opt/shutdown.log
 
