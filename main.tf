@@ -60,6 +60,12 @@ resource "aws_iam_role" "s3_readonly_role" {
       Principal = { Service = "ec2.amazonaws.com" }
     }]
   })
+
+  lifecycle {
+    create_before_destroy = false
+    prevent_destroy       = false
+    ignore_changes        = all
+  }
 }
 
 resource "aws_iam_policy" "s3_readonly_policy" {
@@ -73,6 +79,12 @@ resource "aws_iam_policy" "s3_readonly_policy" {
       Resource = "*"
     }]
   })
+
+  lifecycle {
+    create_before_destroy = false
+    prevent_destroy       = false
+    ignore_changes        = all
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "attach_readonly_policy" {
@@ -90,6 +102,12 @@ resource "aws_iam_role" "s3_writeonly_role" {
       Principal = { Service = "ec2.amazonaws.com" }
     }]
   })
+
+  lifecycle {
+    create_before_destroy = false
+    prevent_destroy       = false
+    ignore_changes        = all
+  }
 }
 
 resource "aws_iam_policy" "s3_writeonly_policy" {
@@ -101,11 +119,17 @@ resource "aws_iam_policy" "s3_writeonly_policy" {
       Effect   = "Allow",
       Action   = ["s3:PutObject", "s3:CreateBucket"],
       Resource = [
-        "arn:aws:s3:::${var.s3_bucket_name}",
-        "arn:aws:s3:::${var.s3_bucket_name}/*"
+        "arn:aws:s3:::sonalizxcvbnm12345",
+        "arn:aws:s3:::sonalizxcvbnm12345/*"
       ]
     }]
   })
+
+  lifecycle {
+    create_before_destroy = false
+    prevent_destroy       = false
+    ignore_changes        = all
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "attach_writeonly_policy" {
@@ -116,26 +140,46 @@ resource "aws_iam_role_policy_attachment" "attach_writeonly_policy" {
 resource "aws_iam_instance_profile" "writeonly_instance_profile" {
   name = "writeonly-instance-profile"
   role = aws_iam_role.s3_writeonly_role.name
+
+  lifecycle {
+    create_before_destroy = false
+    prevent_destroy       = false
+    ignore_changes        = all
+  }
 }
 
 # S3 Bucket with versioning and lifecycle
 resource "aws_s3_bucket" "private_logs" {
-  bucket = var.s3_bucket_name
+  bucket        = "sonalizxcvbnm12345"
   force_destroy = true
   tags = {
     Name = "PrivateLogsBucket"
+  }
+
+  lifecycle {
+    prevent_destroy       = false
+    create_before_destroy = false
+    ignore_changes        = all
   }
 }
 
 resource "aws_s3_bucket_versioning" "private_logs_versioning" {
   bucket = aws_s3_bucket.private_logs.id
+
   versioning_configuration {
     status = "Enabled"
+  }
+
+  lifecycle {
+    prevent_destroy       = false
+    create_before_destroy = false
+    ignore_changes        = all
   }
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "private_logs_lifecycle" {
   bucket = aws_s3_bucket.private_logs.id
+
   rule {
     id     = "expire-old-logs"
     status = "Enabled"
@@ -145,6 +189,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "private_logs_lifecycle" {
     expiration {
       days = 7
     }
+  }
+
+  lifecycle {
+    prevent_destroy       = false
+    create_before_destroy = false
+    ignore_changes        = all
   }
 }
 
@@ -161,18 +211,6 @@ resource "aws_instance" "techeazy_app" {
   tags = {
     Name        = "techeazy-${var.stage}-instance"
     Environment = var.stage
-  }
-}
-
-# Bucket name validation
-locals {
-  bucket_name_valid = length(var.s3_bucket_name) > 0
-}
-
-resource "null_resource" "validate_bucket_name" {
-  count = local.bucket_name_valid ? 0 : 1
-  provisioner "local-exec" {
-    command = "echo Bucket name must be provided! && exit 1"
   }
 }
 
