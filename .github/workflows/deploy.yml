@@ -46,15 +46,16 @@ jobs:
 
     - name: Import Existing Resources (if any)
       run: |
-        terraform import aws_s3_bucket.private_logs sonalizxcvbnm12345 || true
-        terraform import aws_s3_bucket_versioning.private_logs_versioning sonalizxcvbnm12345 || true
-        terraform import aws_s3_bucket_lifecycle_configuration.private_logs_lifecycle sonalizxcvbnm12345 || true
+        echo "Importing existing resources if they exist..."
+        timeout 10s terraform import aws_s3_bucket.private_logs sonalizxcvbnm12345 || true
+        timeout 10s terraform import aws_s3_bucket_versioning.private_logs_versioning sonalizxcvbnm12345 || true
+        timeout 10s terraform import aws_s3_bucket_lifecycle_configuration.private_logs_lifecycle sonalizxcvbnm12345 || true
 
-        terraform import aws_iam_role.s3_readonly_role s3-readonly-role || true
-        terraform import aws_iam_role.s3_writeonly_role s3-writeonly-role || true
-        terraform import aws_iam_policy.s3_readonly_policy arn:aws:iam::202991357943:policy/s3-readonly-policy || true
-        terraform import aws_iam_policy.s3_writeonly_policy arn:aws:iam::202991357943:policy/s3-writeonly-policy || true
-        terraform import aws_iam_instance_profile.writeonly_instance_profile writeonly-instance-profile || true
+        timeout 10s terraform import aws_iam_role.s3_readonly_role s3-readonly-role || true
+        timeout 10s terraform import aws_iam_role.s3_writeonly_role s3-writeonly-role || true
+        timeout 10s terraform import aws_iam_policy.s3_readonly_policy arn:aws:iam::202991357943:policy/s3-readonly-policy || true
+        timeout 10s terraform import aws_iam_policy.s3_writeonly_policy arn:aws:iam::202991357943:policy/s3-writeonly-policy || true
+        timeout 10s terraform import aws_iam_instance_profile.writeonly_instance_profile writeonly-instance-profile || true
 
     - name: Terraform Apply
       run: |
