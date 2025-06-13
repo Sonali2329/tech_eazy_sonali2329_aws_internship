@@ -1,0 +1,48 @@
+name: Deploy EC2 Instance
+
+on:
+  push:
+    branches:
+      - feature-development  # Only trigger on this branch
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy EC2 via Terraform (Dev Only)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set Stage to dev
+      run: echo "STAGE=dev" >> $GITHUB_ENV
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.6.6
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -var="stage=${{ env.STAGE }}"
+
+    - name: Wait for EC2 to Boot
+      run: sleep 60
+
+    - name: Health Check on Port 80
+      run: |
+        PUBLIC_IP=$(terraform output -raw public_ip)
+        echo "Checking app on http://$PUBLIC_IP"
+        curl --fail --retry 10 --retry-delay 10 http://$PUBLIC_IP || exit 1
