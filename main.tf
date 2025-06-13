@@ -2,6 +2,7 @@ provider "aws" {
   region = "us-east-2"
 }
 
+# Generate an SSH key pair
 resource "tls_private_key" "ssh_key" {
   algorithm = "RSA"
   rsa_bits  = 4096
@@ -10,6 +11,10 @@ resource "tls_private_key" "ssh_key" {
 resource "aws_key_pair" "generated_key" {
   key_name   = "techeazy-terraform-key"
   public_key = tls_private_key.ssh_key.public_key_openssh
+
+  lifecycle {
+    ignore_changes = [key_name]
+  }
 }
 
 resource "local_file" "private_key" {
@@ -18,6 +23,7 @@ resource "local_file" "private_key" {
   file_permission = "0600"
 }
 
+# Security group with SSH and HTTP access
 resource "aws_security_group" "allow_http" {
   name_prefix = "allow-http-"
 
@@ -43,7 +49,7 @@ resource "aws_security_group" "allow_http" {
   }
 }
 
-# IAM Role 1a: Read-only access on S3
+# IAM Roles and Policies
 resource "aws_iam_role" "s3_readonly_role" {
   name = "s3-readonly-role"
   assume_role_policy = jsonencode({
@@ -51,9 +57,7 @@ resource "aws_iam_role" "s3_readonly_role" {
     Statement = [{
       Action    = "sts:AssumeRole",
       Effect    = "Allow",
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
+      Principal = { Service = "ec2.amazonaws.com" }
     }]
   })
 }
@@ -76,7 +80,6 @@ resource "aws_iam_role_policy_attachment" "attach_readonly_policy" {
   policy_arn = aws_iam_policy.s3_readonly_policy.arn
 }
 
-# IAM Role 1b: Write-only S3 access (restricted to the specific bucket)
 resource "aws_iam_role" "s3_writeonly_role" {
   name = "s3-writeonly-role"
   assume_role_policy = jsonencode({
@@ -84,9 +87,7 @@ resource "aws_iam_role" "s3_writeonly_role" {
     Statement = [{
       Action    = "sts:AssumeRole",
       Effect    = "Allow",
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
+      Principal = { Service = "ec2.amazonaws.com" }
     }]
   })
 }
@@ -96,16 +97,14 @@ resource "aws_iam_policy" "s3_writeonly_policy" {
   description = "Provides write-only access to a specific S3 bucket"
   policy      = jsonencode({
     Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow",
-        Action   = ["s3:PutObject", "s3:CreateBucket"],
-        Resource = [
-          "arn:aws:s3:::${var.s3_bucket_name}",
-          "arn:aws:s3:::${var.s3_bucket_name}/*"
-        ]
-      }
-    ]
+    Statement = [{
+      Effect   = "Allow",
+      Action   = ["s3:PutObject", "s3:CreateBucket"],
+      Resource = [
+        "arn:aws:s3:::${var.s3_bucket_name}",
+        "arn:aws:s3:::${var.s3_bucket_name}/*"
+      ]
+    }]
   })
 }
 
@@ -119,21 +118,17 @@ resource "aws_iam_instance_profile" "writeonly_instance_profile" {
   role = aws_iam_role.s3_writeonly_role.name
 }
 
-# S3 Bucket
+# S3 Bucket with versioning and lifecycle
 resource "aws_s3_bucket" "private_logs" {
   bucket = var.s3_bucket_name
-
+  force_destroy = true
   tags = {
     Name = "PrivateLogsBucket"
   }
-
-  force_destroy = true
 }
-
 
 resource "aws_s3_bucket_versioning" "private_logs_versioning" {
   bucket = aws_s3_bucket.private_logs.id
-
   versioning_configuration {
     status = "Enabled"
   }
@@ -141,23 +136,21 @@ resource "aws_s3_bucket_versioning" "private_logs_versioning" {
 
 resource "aws_s3_bucket_lifecycle_configuration" "private_logs_lifecycle" {
   bucket = aws_s3_bucket.private_logs.id
-
   rule {
     id     = "expire-old-logs"
     status = "Enabled"
-
     filter {
       prefix = ""
     }
-
     expiration {
       days = 7
     }
   }
 }
 
+# EC2 Instance
 resource "aws_instance" "techeazy_app" {
-  ami                         = "ami-0fb653ca2d3203ac1" # Ubuntu 22.04 LTS in us-east-2
+  ami                         = "ami-0fb653ca2d3203ac1"
   instance_type               = var.instance_type
   key_name                    = aws_key_pair.generated_key.key_name
   associate_public_ip_address = true
@@ -166,11 +159,12 @@ resource "aws_instance" "techeazy_app" {
   iam_instance_profile        = aws_iam_instance_profile.writeonly_instance_profile.name
 
   tags = {
-    Name = "techeazy-ubuntu-instance"
+    Name        = "techeazy-${var.stage}-instance"
+    Environment = var.stage
   }
 }
 
-# validation
+# Bucket name validation
 locals {
   bucket_name_valid = length(var.s3_bucket_name) > 0
 }
@@ -180,4 +174,9 @@ resource "null_resource" "validate_bucket_name" {
   provisioner "local-exec" {
     command = "echo Bucket name must be provided! && exit 1"
   }
+}
+
+output "public_ip" {
+  description = "Public IP of the EC2 instance"
+  value       = aws_instance.techeazy_app.public_ip
 }
