@@ -44,11 +44,22 @@ jobs:
     - name: Terraform Init
       run: terraform init
 
+    - name: Import Existing Resources (if any)
+      run: |
+        terraform import aws_s3_bucket.private_logs sonalizxcvbnm12345 || true
+        terraform import aws_s3_bucket_versioning.private_logs_versioning sonalizxcvbnm12345 || true
+        terraform import aws_s3_bucket_lifecycle_configuration.private_logs_lifecycle sonalizxcvbnm12345 || true
+
+        terraform import aws_iam_role.s3_readonly_role s3-readonly-role || true
+        terraform import aws_iam_role.s3_writeonly_role s3-writeonly-role || true
+        terraform import aws_iam_policy.s3_readonly_policy arn:aws:iam::202991357943:policy/s3-readonly-policy || true
+        terraform import aws_iam_policy.s3_writeonly_policy arn:aws:iam::202991357943:policy/s3-writeonly-policy || true
+        terraform import aws_iam_instance_profile.writeonly_instance_profile writeonly-instance-profile || true
+
     - name: Terraform Apply
       run: |
         terraform apply -auto-approve \
           -var="stage=${{ env.STAGE }}" \
-          -var="s3_bucket_name=${{ secrets.S3_BUCKET_NAME }}" \
           -var="instance_type=t2.micro"
 
     - name: Wait for EC2 Boot
